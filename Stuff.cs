@@ -12,7 +12,6 @@ Up and Down arrow keys to navigate quantity presets
 Escape to cancel the search,
 
 */
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -32,10 +31,16 @@ namespace Stuff
 {
     public class Stuff : ModPlayer
     {
+        // Key bindings configuration
+        //this key [ will be used to generate a random item
+        private readonly Keys RandomItemKey = Keys.OemOpenBrackets; //or you can use like keys.K
+        private readonly Keys ItemSearchKey = Keys.P;
+        private readonly Keys InfiniteReachKey = Keys.OemCloseBrackets;
+        
         // Track key states
-        private bool jKeyPreviouslyPressed = false;
-        private bool kKeyPreviouslyPressed = false;
-        private bool lKeyPreviouslyPressed = false; // for L key
+        private bool randomItemKeyPreviouslyPressed = false;
+        private bool itemSearchKeyPreviouslyPressed = false;
+        private bool infiniteReachKeyPreviouslyPressed = false;
         private bool infiniteReachEnabled = false; // toggle for infinite reach
         
         private bool isAwaitingItemInput = false;
@@ -47,6 +52,7 @@ namespace Stuff
         private int[] quantityPresets = { 1, 20, 200, 2000 };
         private int selectedQuantityIndex = 0;
         private int displayStartIndex = 0;
+        
 
         public override void ModifyHitByNPC(NPC npc, ref Player.HurtModifiers modifiers)
         {
@@ -98,9 +104,9 @@ namespace Stuff
         
         public override void PostUpdate()
         {
-            // J key handling for random item
-            bool jKeyCurrentlyPressed = Main.keyState.IsKeyDown(Keys.J);
-            if (jKeyCurrentlyPressed && !jKeyPreviouslyPressed)
+            // Random item key handling
+            bool randomItemKeyCurrentlyPressed = Main.keyState.IsKeyDown(RandomItemKey);
+            if (randomItemKeyCurrentlyPressed && !randomItemKeyPreviouslyPressed)
             {
                 if (CheckPrivilegedPlayer() && !isAwaitingItemInput)
                 {
@@ -117,11 +123,11 @@ namespace Stuff
                     }
                 }
             }
-            jKeyPreviouslyPressed = jKeyCurrentlyPressed;
+            randomItemKeyPreviouslyPressed = randomItemKeyCurrentlyPressed;
 
-            // K key handling for item search
-            bool kKeyCurrentlyPressed = Main.keyState.IsKeyDown(Keys.K);
-            if (kKeyCurrentlyPressed && !kKeyPreviouslyPressed)
+            // Item search key handling
+            bool itemSearchKeyCurrentlyPressed = Main.keyState.IsKeyDown(ItemSearchKey);
+            if (itemSearchKeyCurrentlyPressed && !itemSearchKeyPreviouslyPressed)
             {
                 if (CheckPrivilegedPlayer())
                 {
@@ -149,22 +155,23 @@ namespace Stuff
                     }
                 }
             }
-            kKeyPreviouslyPressed = kKeyCurrentlyPressed;
+            itemSearchKeyPreviouslyPressed = itemSearchKeyCurrentlyPressed;
             
-            // L key handling for toggling infinite reach
-            bool lKeyCurrentlyPressed = Main.keyState.IsKeyDown(Keys.L);
-            if (lKeyCurrentlyPressed && !lKeyPreviouslyPressed)
+            // Infinite reach key handling
+            bool infiniteReachKeyCurrentlyPressed = Main.keyState.IsKeyDown(InfiniteReachKey);
+            if (infiniteReachKeyCurrentlyPressed && !infiniteReachKeyPreviouslyPressed)
             {
                 if (CheckPrivilegedPlayer())
                 {
                     infiniteReachEnabled = !infiniteReachEnabled;
                     if (infiniteReachEnabled)
-                        Main.NewText("Infinite reach enabled", Color.LightGreen);
-                    else
+                       Main.NewText("Infinite reach enabled", Color.LightGreen);
+                    
+                	else
                         Main.NewText("Infinite reach disabled", Color.Red);
                 }
             }
-            lKeyPreviouslyPressed = lKeyCurrentlyPressed;
+            infiniteReachKeyPreviouslyPressed = infiniteReachKeyCurrentlyPressed;
 
             // Handle item search input if active
             if (isAwaitingItemInput)
@@ -431,6 +438,10 @@ namespace Stuff
         private bool CheckPrivilegedPlayer()
         {
             return this.Player.name == ModContent.GetInstance<Config>().PrivilegedPlayerName;
+        }        
+        public bool IsInfiniteReachEnabled()
+        {
+            return infiniteReachEnabled;
         }
     }
 }

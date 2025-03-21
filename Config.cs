@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using Terraria.ModLoader.Config;
 
-namespace FirstTime1000
+namespace Stuff
 {
     public class Config : ModConfig
     {
