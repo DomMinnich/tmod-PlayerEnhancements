@@ -14,26 +14,20 @@ Escape to cancel the search,
 */
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using Terraria.ModLoader;
-using Terraria;
-using Terraria.ID;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
-using Terraria.GameInput;
+using Terraria;
+using Terraria.ID;
+using Terraria.ModLoader;
 using Terraria.UI.Chat;
-using System.Text.RegularExpressions;
-using Microsoft.Xna.Framework.Graphics;
 
 namespace Stuff
 {
     public class Stuff : ModPlayer
     {
         // Key bindings configuration
-        //this key [ will be used to generate a random item
-        private readonly Keys RandomItemKey = Keys.OemOpenBrackets; //or you can use like keys.K
+        private readonly Keys RandomItemKey = Keys.OemOpenBrackets; // [ key
         private readonly Keys ItemSearchKey = Keys.P;
         private readonly Keys InfiniteReachKey = Keys.OemCloseBrackets;
         
@@ -52,7 +46,6 @@ namespace Stuff
         private int[] quantityPresets = { 1, 20, 200, 2000 };
         private int selectedQuantityIndex = 0;
         private int displayStartIndex = 0;
-        
 
         public override void ModifyHitByNPC(NPC npc, ref Player.HurtModifiers modifiers)
         {
@@ -70,7 +63,6 @@ namespace Stuff
             }
         }
 
-        // Modify natural life regeneration
         public override void NaturalLifeRegen(ref float regen)
         {
             if (CheckPrivilegedPlayer())
@@ -79,7 +71,6 @@ namespace Stuff
             }
         }
 
-        // Add life steal on hitting an NPC
         public override void OnHitNPC(NPC target, NPC.HitInfo hit, int damageDone)
         {
             if (CheckPrivilegedPlayer())
@@ -89,16 +80,12 @@ namespace Stuff
             }
         }
 
-        // Override ResetEffects to apply infinite reach if enabled
         public override void ResetEffects()
         {
             if (infiniteReachEnabled)
             {
-                // Set extremely high values for tile interaction range
                 Player.tileRangeX = 999;
                 Player.tileRangeY = 999;
-                // Uncomment the following line if the property exists in your tModLoader version:
-                // Player.tileInteractRange = 999;
             }
         }
         
@@ -114,12 +101,8 @@ namespace Stuff
                     int randomItemID = Main.rand.Next(1, 5500);
                     if (randomItemID < ItemID.Count)
                     {
-                        // Create the item
-                        Item.NewItem(Player.GetSource_GiftOrReward(), (int)Player.position.X, (int)Player.position.Y, 
-                            Player.width, Player.height, randomItemID);
-                        // Show item name as a message
-                        string itemName = Lang.GetItemNameValue(randomItemID);
-                        Main.NewText($"Received: {itemName}!", 255, 240, 20);
+                        // Spawn the item using our helper method (handles multiplayer)
+                        SpawnItem(randomItemID, 1);
                     }
                 }
             }
@@ -133,7 +116,6 @@ namespace Stuff
                 {
                     if (!isAwaitingItemInput)
                     {
-                        // Start awaiting input
                         isAwaitingItemInput = true;
                         isQuantityInput = false;
                         currentInput = "";
@@ -142,14 +124,11 @@ namespace Stuff
                         selectedItemIndex = 0;
                         displayStartIndex = 0;
                         selectedQuantityIndex = 0;
-                        // Clear chat before starting search
                         ClearChat();
-                        Main.NewText("Type item name to search (press Enter to select, Escape to cancel):", Color.Yellow);
-                        Main.NewText("Use Left/Right arrows to navigate items, Up/Down for quantity", Color.LightGray);
+                        // Main.NewText("Type item name to search...", Color.Yellow);
                     }
                     else
                     {
-                        // Toggle off if already in input mode
                         isAwaitingItemInput = false;
                         ClearChat();
                     }
@@ -164,16 +143,13 @@ namespace Stuff
                 if (CheckPrivilegedPlayer())
                 {
                     infiniteReachEnabled = !infiniteReachEnabled;
-                    if (infiniteReachEnabled)
-                       Main.NewText("Infinite reach enabled", Color.LightGreen);
-                    
-                	else
-                        Main.NewText("Infinite reach disabled", Color.Red);
+                    // Optionally display a message:
+                    // Main.NewText(infiniteReachEnabled ? "Infinite reach enabled" : "Infinite reach disabled", Color.LightGreen);
                 }
             }
             infiniteReachKeyPreviouslyPressed = infiniteReachKeyCurrentlyPressed;
 
-            // Handle item search input if active
+            // Process item search input if active
             if (isAwaitingItemInput)
             {
                 if (Main.keyState.IsKeyDown(Keys.Enter))
@@ -184,6 +160,31 @@ namespace Stuff
             }
         }
 
+        /// <summary>
+        /// Helper method that spawns the item. If in multiplayer client mode, sends a packet to the server.
+        /// </summary>
+        private void SpawnItem(int itemID, int quantity)
+        {
+            if (Main.netMode == NetmodeID.MultiplayerClient)
+            {
+                var packet = Stuff.Instance.GetPacket();
+                packet.Write((byte)MessageType.SpawnItem);
+                packet.Write(itemID);
+                packet.Write(quantity);
+                packet.Write((int)Player.position.X);
+                packet.Write((int)Player.position.Y);
+                packet.Send();
+            }
+            else
+            {
+                for (int i = 0; i < quantity; i++)
+                {
+                    Item.NewItem(Player.GetSource_GiftOrReward(), (int)Player.position.X, (int)Player.position.Y, 
+                        Player.width, Player.height, itemID);
+                }
+            }
+        }
+        
         private void HandleItemSearchInput()
         {
             var keyState = Main.keyState;
@@ -194,7 +195,7 @@ namespace Stuff
                 isAwaitingItemInput = false;
                 isQuantityInput = false;
                 ClearChat();
-                Main.NewText("Item search cancelled.", Color.Red);
+                // Main.NewText("Item search cancelled.", Color.Red);
                 return;
             }
 
@@ -206,12 +207,12 @@ namespace Stuff
                     string itemName = Lang.GetItemNameValue(itemID);
                     int quantity = isQuantityInput ? quantityPresets[selectedQuantityIndex] : 1;
                     ClearChat();
+                    // Spawn the selected item the desired number of times
                     for (int i = 0; i < quantity; i++)
                     {
-                        Item.NewItem(Player.GetSource_GiftOrReward(), (int)Player.position.X, (int)Player.position.Y, 
-                            Player.width, Player.height, itemID);
+                        SpawnItem(itemID, 1);
                     }
-                    Main.NewText($"Received: {quantity}x {itemName}!", Color.Green);
+                    // Main.NewText($"Received: {quantity}x {itemName}!", Color.Green);
                     isAwaitingItemInput = false;
                     isQuantityInput = false;
                 }
@@ -439,6 +440,7 @@ namespace Stuff
         {
             return this.Player.name == ModContent.GetInstance<Config>().PrivilegedPlayerName;
         }        
+        
         public bool IsInfiniteReachEnabled()
         {
             return infiniteReachEnabled;
